@@ -1,0 +1,27 @@
+#!/bin/bash
+# Lets a player join: bin/mc-whitelist <minecraft-username>
+set -euo pipefail
+# shellcheck source=bin/lib.sh
+source "$(dirname "$0")/lib.sh"
+
+name="${1:-}"
+# Minecraft names are 3-16 letters, digits, or underscores. Checking this first also
+# makes the name safe to put inside the command sent to the server.
+if [[ ! "$name" =~ ^[A-Za-z0-9_]{3,16}$ ]]; then
+  echo "Usage: bin/mc-whitelist <name>  (3-16 letters, digits, or _)" >&2
+  exit 2
+fi
+
+require_aws_cli
+load_outputs
+
+if [[ "$(instance_state)" != running ]]; then
+  echo "The server isn't running. Run bin/mc-start first." >&2
+  exit 1
+fi
+
+# Type the command into the server console, then show the server's reply.
+if ! ssm_run "echo 'whitelist add $name' > /run/minecraft.stdin; sleep 2; journalctl -u minecraft -n 20 -o cat | grep -i -- '$name' | tail -1"; then
+  echo "The server didn't reply. Is Minecraft running? Try bin/mc-start." >&2
+  exit 1
+fi

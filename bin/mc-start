@@ -1,0 +1,44 @@
+#!/bin/bash
+# Opens the firewall to your current IP, starts the server, and waits until the world has loaded.
+set -euo pipefail
+# shellcheck source=bin/lib.sh
+source "$(dirname "$0")/lib.sh"
+
+require_aws_cli
+load_outputs
+sync_ingress "$(current_ip)"
+
+state=$(instance_state)
+case "$state" in
+  stopping)
+    echo "The server is still stopping. Waiting for it to finish..."
+    aws ec2 wait instance-stopped --instance-ids "$INSTANCE_ID"
+    state=stopped
+    ;;
+  pending | running | stopped) ;;
+  *)
+    echo "The server is '$state' and can't be started." >&2
+    exit 1
+    ;;
+esac
+
+if [[ "$state" == stopped ]]; then
+  echo "Starting the server..."
+  aws ec2 start-instances --instance-ids "$INSTANCE_ID" > /dev/null
+fi
+aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
+
+# Minecraft opens its port before the world finishes loading, so wait for its "Done (" log line.
+# Early attempts can fail while the SSM agent connects, so errors here just mean "try again".
+echo "Waiting for the world to load (usually 1-2 minutes)..."
+deadline=$((SECONDS + MC_READY_TIMEOUT))
+until ssm_run "journalctl -u minecraft -b | grep -q 'Done ('" > /dev/null 2>&1; do
+  if ((SECONDS >= deadline)); then
+    echo "The server didn't finish loading within $MC_READY_TIMEOUT seconds." >&2
+    echo "Check it with Session Manager: sudo journalctl -u mc-boot -u minecraft -b" >&2
+    exit 1
+  fi
+  sleep "$MC_POLL_SECONDS"
+done
+
+echo "Server ready: $PUBLIC_IP"

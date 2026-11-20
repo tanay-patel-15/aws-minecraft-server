@@ -1,0 +1,42 @@
+#!/bin/bash
+# Fake AWS CLI for tests. It records every call, then answers from files
+# the test writes into $STUB_DIR. It never contacts AWS.
+echo "aws $*" >> "$STUB_DIR/aws-calls"
+
+case "$*" in
+  --version*)
+    echo "${STUB_AWS_VERSION:-aws-cli/2.31.27 Python/3.13.9 Darwin/24.6.0}" ;;
+  "ec2 describe-instances"*)
+    cat "$STUB_DIR/state" ;;
+  "ec2 describe-security-groups"*)
+    cat "$STUB_DIR/cidrs" 2> /dev/null || true ;;
+  "ssm send-command"*)
+    # Act like a stopped server when the test creates the ssm-fails file.
+    if [[ -e "$STUB_DIR/ssm-fails" ]]; then
+      echo "An error occurred (InvalidInstanceId) when calling the SendCommand operation" >&2
+      exit 255
+    fi
+    echo "cmd-test" ;;
+  "ssm get-command-invocation"*)
+    echo '{"ResponseCode": 0, "StandardOutputContent": ""}' ;;
+    "s3api list-objects-v2"*)
+    # How many backups exist. s3-list-fails acts like a network or permission error.
+    if [[ -e "$STUB_DIR/s3-list-fails" ]]; then
+      echo "An error occurred (AccessDenied) when calling the ListObjectsV2 operation" >&2
+      exit 254
+    fi
+    cat "$STUB_DIR/keycount" 2> /dev/null || echo 0 ;;
+  "s3 cp"*)
+    # Upload or download. s3-fails makes both fail; a download copies the test's archive.
+    if [[ -e "$STUB_DIR/s3-fails" ]]; then
+      echo "upload failed: connection reset" >&2
+      exit 1
+    fi
+    if [[ "$3" == s3://* ]]; then
+      cp "$STUB_DIR/backup.tar.gz" "$4"
+    fi
+    ;;
+  *)
+    # start-instances, stop-instances, waits, authorize, revoke: succeed quietly.
+    ;;
+esac

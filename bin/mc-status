@@ -1,0 +1,15 @@
+#!/bin/bash
+# Shows whether the server is running, its address, and the AWS credits you have left.
+set -euo pipefail
+# shellcheck source=bin/lib.sh
+source "$(dirname "$0")/lib.sh"
+
+require_aws_cli
+load_outputs
+
+credits=$(aws freetier get-account-plan-state \
+  --query '[accountPlanRemainingCredits.amount, accountPlanType]' --output text)
+
+echo "Server:  $(instance_state)"
+echo "Address: $PUBLIC_IP"
+echo "Credits: \$${credits%%[[:space:]]*} left (plan: ${credits##*[[:space:]]})"
