@@ -1,0 +1,12 @@
+# Terraform: state can hold sensitive values and must never be committed
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Secrets
+*.pem
+.env
+
+# Local tooling
+.superpowers/
