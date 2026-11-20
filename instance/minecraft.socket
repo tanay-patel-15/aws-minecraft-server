@@ -1,0 +1,9 @@
+[Unit]
+Description=Minecraft console input
+PartOf=minecraft.service
+
+[Socket]
+ListenFIFO=/run/minecraft.stdin
+SocketUser=minecraft
+SocketMode=0660
+RemoveOnStop=true

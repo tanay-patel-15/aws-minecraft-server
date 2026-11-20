@@ -1,0 +1,14 @@
+#!/bin/bash
+# Runs once, on the very first boot. It installs mc-boot, which then runs on every boot.
+set -euo pipefail
+export AWS_DEFAULT_REGION=us-east-1
+
+echo "${bucket}" > /etc/mc-bucket
+mkdir -p /opt/mc
+aws s3 cp "s3://${bucket}/scripts/mc-boot.sh" /opt/mc/mc-boot.sh
+aws s3 cp "s3://${bucket}/scripts/mc-boot.service" /etc/systemd/system/mc-boot.service
+chmod +x /opt/mc/mc-boot.sh
+
+systemctl daemon-reload
+systemctl enable mc-boot.service
+systemctl start --no-block mc-boot.service

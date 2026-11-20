@@ -1,0 +1,14 @@
+[Unit]
+Description=Sync scripts and prepare Minecraft
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=AWS_DEFAULT_REGION=us-east-1
+ExecStart=/opt/mc/mc-boot.sh
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
