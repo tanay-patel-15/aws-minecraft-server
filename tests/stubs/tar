@@ -1,0 +1,9 @@
+#!/bin/bash
+# Wraps the real tar for tests: records each call in the event log, and fails
+# on demand when the test creates the tar-fails file.
+echo "tar" >> "$STUB_DIR/events"
+if [[ -e "$STUB_DIR/tar-fails" ]]; then
+  echo "tar: world/region/r.0.0.mca: Read error" >&2
+  exit 2
+fi
+exec /usr/bin/tar "$@"

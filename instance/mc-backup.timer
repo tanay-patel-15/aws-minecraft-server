@@ -1,0 +1,12 @@
+[Unit]
+Description=Back up the Minecraft world every 30 minutes
+# Starts and stops together with Minecraft.
+PartOf=minecraft.service
+After=minecraft.service
+
+[Timer]
+OnActiveSec=30min
+OnUnitActiveSec=30min
+
+[Install]
+WantedBy=minecraft.service

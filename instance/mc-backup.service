@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up the Minecraft world to S3 while it runs
+# Only while Minecraft is running; never start Minecraft just to back it up.
+Requisite=minecraft.service
+After=minecraft.service
+
+[Service]
+Type=oneshot
+Environment=AWS_DEFAULT_REGION=us-east-1
+ExecStart=/opt/mc/mc-backup.sh --live
